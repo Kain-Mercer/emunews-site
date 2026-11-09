@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EmuNews</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="logo.png">
+<meta name="theme-color" content="#1a1a2e">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="EmuNews">
+<link rel="apple-touch-icon" href="logo.png">
+<style>
+  :root {
+    --bg-base: #0f1419;
+    --bg-surface: #161b22;
+    --bg-surface-2: #1d242d;
+    --bg-header: #12171d;
+    --border: #242b35;
+    --border-soft: #1c222b;
+    --text-primary: #e8eef2;
+    --text-secondary: #a6b1bd;
+    --text-muted: #6e7a88;
+    --text-faint: #4a535e;
+    --accent: #2FA694;
+    --accent-hover: #36c0ac;
+    --accent-soft: #1d3e3a;
+    --live-dot: #5fcf7f;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  /* Header */
+  header {
+    background: var(--bg-header);
+    border-bottom: 1px solid var(--border-soft);
+    padding: 14px 28px;
+    display: flex; align-items: center; gap: 14px;
+    flex-wrap: wrap;
+  }
+  .logo {
+    width: 40px; height: 40px; flex-shrink: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--bg-surface);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--accent); font-weight: 800; font-size: 18px;
+    font-family: Georgia, serif;
+  }
+  .logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .brand { min-width: 0; }
+  .brand h1 {
+    margin: 0;
+    font-family: 'Source Serif Pro', Georgia, serif;
+    font-size: 22px; font-weight: 700; letter-spacing: -0.3px;
+  }
+  .brand p {
+    margin: 0; color: var(--text-muted); font-size: 11px;
+    /* Truncate gracefully if the chosen tagline is unusually long */
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 60vw;
+  }
+  .spacer { flex: 1; min-width: 0; }
+  .pill {
+    color: var(--text-muted); font-size: 12px;
+    white-space: nowrap;
+  }
+  .dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--live-dot); margin-right: 6px;
+    animation: blink 2s infinite;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  button {
+    font-family: inherit; cursor: pointer;
+    border-radius: 8px; padding: 7px 14px;
+    font-size: 13px; font-weight: 600;
+    background: transparent; color: var(--text-secondary);
+    border: 1px solid var(--border);
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+  button:hover { border-color: var(--accent); color: var(--text-primary); }
+  button.primary {
+    background: var(--accent); color: var(--bg-base); border-color: var(--accent);
+  }
+  button.primary:hover { background: var(--accent-hover); }
+  button.active {
+    background: var(--accent-soft); border-color: var(--accent);
+    color: var(--accent-hover);
+    /* Long locale labels (e.g. "🇺🇸 Lake Elsinore, US · Global view") need to
+       fit the button without wrapping into a tower. Truncate gracefully. */
+    max-width: 60vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* Filter bar */
+  .filters {
+    background: var(--bg-base);
+    border-bottom: 1px solid var(--border-soft);
+    padding: 12px 28px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .filter-row {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  }
+  select, input[type="search"] {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-family: inherit; font-size: 13px;
+    padding: 7px 12px;
+  }
+  select:focus, input:focus {
+    outline: none; border-color: var(--accent);
+  }
+  input[type="search"] { flex: 1; min-width: 220px; max-width: 360px; }
+  .label { color: var(--text-muted); font-size: 11px; margin-right: 4px; }
+  .chip {
+    display: inline-block;
+    background: transparent; color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px; padding: 3px 11px;
+    font-size: 11px; font-weight: 500; letter-spacing: 0.2px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+  .chip:hover { color: var(--text-primary); border-color: var(--text-faint); }
+  .chip.on {
+    background: var(--accent); color: var(--bg-base);
+    border-color: var(--accent); font-weight: 600;
+  }
+  .count { margin-left: auto; color: var(--text-muted); font-size: 12px; }
+  /* Feed */
+  main {
+    max-width: 760px; margin: 0 auto; padding: 24px;
+  }
+  .card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 12px;
+    transition: background 0.15s ease, border-color 0.15s ease, opacity 0.2s ease;
+  }
+  .card:hover {
+    border-color: var(--border);
+  }
+  /* Read state — visually de-emphasised. localStorage-backed.
+     Important: only dim when the card is collapsed. An expanded preview
+     should always be at full brightness so the body is comfortable to
+     read, regardless of whether it was marked read on this session. */
+  .card.read:not(.expanded) {
+    opacity: 0.5;
+  }
+  .card.read:not(.expanded):hover {
+    opacity: 0.75;
+  }
+
+  /* Health pill — clickable, sits next to "Live". Colour states match status. */
+  .health-pill {
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.15s ease;
+  }
+  .health-pill.ok { color: var(--text-muted); }
+  .health-pill.warn { color: #d6a85a; }
+  .health-pill.bad  { color: #d6675a; }
+  .health-pill:hover { filter: brightness(1.2); }
+
+  /* Health drawer — shows per-feed status when the pill is clicked.
+     Floats over the page rather than expanding the header. */
+  #health-panel {
+    position: fixed;
+    top: 80px;
+    right: 24px;
+    width: 320px;
+    max-width: calc(100vw - 24px);
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    z-index: 100;
+    display: none;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+  #health-panel.open { display: block; }
+  #health-panel h4 {
+    margin: 0 0 8px 0;
+    font-family: 'Source Serif Pro', Georgia, serif;
+    font-size: 14px; font-weight: 600;
+    color: var(--text-primary);
+  }
+  .health-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border-soft);
+    font-size: 12px;
+  }
+  .health-row:last-child { border-bottom: 0; }
+  .health-row .name { color: var(--text-secondary); }
+  .health-row .status { font-size: 11px; }
+  .health-row .status.ok { color: var(--accent); }
+  .health-row .status.stale { color: #d6a85a; }
+  .health-row .status.down { color: #d6675a; }
+  .card-meta {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 8px; flex-wrap: wrap;
+  }
+
+  /* Card layout — flex row with text on left, optional thumbnail on right.
+     The text column flexes to fill available width; thumb is fixed-size so
+     cards align consistently regardless of whether they have an image. */
+  .card-row {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  .card-text {
+    flex: 1;
+    min-width: 0;  /* allow long titles to wrap inside the flex item */
+  }
+  .card-thumb {
+    width: 120px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 6px;
+    flex-shrink: 0;
+    /* Reserve space while loading so the layout doesn't jump */
+    background: var(--bg-surface-2);
+    /* Slight desaturation when card is in read state (handled by parent) */
+    transition: opacity 0.15s ease;
+  }
+  /* On narrow viewports, thumbnails get smaller to keep title readable */
+  @media (max-width: 600px) {
+    .card-row { gap: 10px; }
+    .card-thumb { width: 80px; height: 60px; }
+  }
+  .source-pill {
+    border-radius: 4px; padding: 3px 9px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.3px;
+  }
+  /* Bias pill — user-annotated editorial slant. Same shape as source-pill
+     but with a solid user-chosen background and auto-contrast text colour.
+     Uppercased for a label-y feel that distinguishes it from the source
+     chip's mixed-case. */
+  .bias-pill {
+    border-radius: 4px; padding: 3px 9px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .rel { color: var(--text-muted); font-size: 11px; }
+  .rel.high { color: var(--accent); }
+  .sep { color: var(--text-faint); }
+  .time { color: var(--text-muted); font-size: 11px; }
+  .card h2 {
+    margin: 0 0 6px 0;
+    font-family: 'Source Serif Pro', Georgia, serif;
+    font-size: 17px; font-weight: 600; line-height: 1.35;
+    color: var(--text-primary);
+  }
+  .card p {
+    margin: 0 0 10px 0;
+    color: var(--text-secondary);
+    font-size: 13px; line-height: 1.5;
+  }
+  .card-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  .card-footer {
+    color: var(--accent); font-size: 11px; font-weight: 600;
+  }
+
+  /* Action row: small buttons under each card. The card body itself is no
+     longer the click target — these explicit actions are. */
+  .card-actions {
+    display: flex; gap: 14px; align-items: center;
+    margin-top: 4px;
+  }
+  .action-link {
+    color: var(--accent); font-size: 11px; font-weight: 600;
+    cursor: pointer; user-select: none;
+    transition: color 0.12s ease;
+  }
+  .action-link:hover { color: var(--accent-hover); }
+  .action-link.muted { color: var(--text-muted); font-weight: 500; }
+  .action-link.muted:hover { color: var(--text-secondary); }
+
+  /* Inline preview — expanded body content. Slides into card. */
+  .preview {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-soft);
+    color: var(--text-secondary);
+    /* Constrain reading width even on wide screens — easier on the eyes.
+       65ch is the typographic sweet spot for body copy. */
+    max-width: 65ch;
+  }
+  .preview .meta {
+    color: var(--text-muted); font-size: 11px;
+    margin-bottom: 14px;
+  }
+  /* Hero image at top of preview. Max height prevents tall portrait images
+     from dominating the pane; subtle border lines it up with other UI. */
+  .preview .hero {
+    width: 100%;
+    max-height: 340px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 14px;
+    display: block;
+    /* Reserve space during lazy-load so the layout doesn't jump */
+    background: var(--bg-surface-2);
+  }
+  .preview .body {
+    font-size: 14.5px;
+    line-height: 1.75;
+    color: var(--text-primary);
+  }
+  .preview .body p {
+    margin: 0 0 1.1em 0;
+  }
+  .preview .body p:last-child { margin-bottom: 0; }
+  /* Drop cap on the first paragraph — gives the body a clear "begin reading
+     here" anchor and breaks up the wall-of-text feel. */
+  .preview .body p:first-of-type::first-letter {
+    font-family: 'Source Serif Pro', Georgia, serif;
+    font-size: 3em;
+    font-weight: 700;
+    color: var(--accent);
+    float: left;
+    line-height: 0.9;
+    margin: 0.05em 0.1em 0 0;
+    padding-right: 4px;
+  }
+  /* Headings inside extracted body (e.g. section breaks in long features) */
+  .preview .body h3, .preview .body h4, .preview .body h5 {
+    font-family: 'Source Serif Pro', Georgia, serif;
+    color: var(--text-primary);
+    margin: 1.4em 0 0.5em 0;
+    line-height: 1.3;
+  }
+  .preview .body h3 { font-size: 18px; font-weight: 700; }
+  .preview .body h4 { font-size: 16px; font-weight: 600; }
+  .preview .body h5 { font-size: 14px; font-weight: 600; color: var(--text-secondary); }
+  /* Bullet lists */
+  .preview .body ul {
+    margin: 0 0 1.1em 0;
+    padding-left: 1.4em;
+  }
+  .preview .body li {
+    margin-bottom: 0.4em;
+  }
+  .preview .loading {
+    color: var(--text-muted); font-size: 12px; font-style: italic;
+  }
+  .preview .error {
+    color: var(--text-muted); font-size: 12px;
+    padding: 10px 12px;
+    background: var(--bg-surface-2);
+    border-radius: 6px;
+  }
+  .preview .error a { color: var(--accent); }
+  /* Cached badge — shown when preview comes from cache (i.e. instant) */
+  .preview .cached {
+    display: inline-block;
+    background: var(--accent-soft); color: var(--accent);
+    font-size: 9px; padding: 1px 6px; border-radius: 3px;
+    margin-left: 6px; letter-spacing: 0.4px; text-transform: uppercase;
+    vertical-align: middle;
+  }
+
+  /* Empty state */
+  .empty {
+    background: var(--bg-surface);
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    padding: 40px 28px;
+    text-align: center;
+    color: var(--text-muted);
+  }
+  .empty h3 {
+    margin: 0 0 8px 0; color: var(--text-primary);
+    font-family: 'Source Serif Pro', Georgia, serif; font-size: 18px;
+  }
+  /* Responsive: stack on narrow screens */
+  @media (max-width: 640px) {
+    /* Pull in the side padding so the layout actually fits 360-420px wide
+       phones with no horizontal scroll. */
+    header {
+      padding: 10px 12px;
+      gap: 8px;
+    }
+    .filters, main { padding-left: 12px; padding-right: 12px; }
+
+    /* Brand row: logo + name + tagline on the left; pills tuck under */
+    .logo { width: 36px; height: 36px; }
+    .brand h1 { font-size: 18px; }
+    .brand p {
+      display: block;          /* keep tagline visible on mobile */
+      font-size: 10px;
+      max-width: 60vw;
+    }
+
+    /* Pills (indexed count + Live) wrap to their own line */
+    .pill { font-size: 11px; }
+
+    /* Buttons get equal share of the row, side-by-side */
+    .spacer { flex-basis: 100%; height: 0; }
+    #btn-localise, #btn-refresh {
+      flex: 1 1 0;
+      padding: 8px 10px;
+      font-size: 12px;
+      max-width: none;
+    }
+    /* Active locale label in the button can be up to half the screen */
+    button.active { max-width: 50vw; }
+
+    /* Filter rows: keep them readable and avoid horizontal scroll */
+    .filter-row { gap: 6px; }
+    input[type="search"] {
+      max-width: none;
+      flex: 1 1 100%;          /* search box gets its own line */
+      min-width: 0;
+    }
+    select { flex: 1 1 100%; min-width: 0; }
+    .count { font-size: 11px; }
+
+    /* Cards: tighter padding, bigger touch targets */
+    .card { padding: 14px 16px; }
+    .card h2 { font-size: 16px; }
+    .card p { font-size: 13px; }
+    .chip { padding: 5px 11px; font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo" id="logo-slot">E</div>
+  <div class="brand">
+    <h1>EmuNews</h1>
+    <p id="tagline-slot">&nbsp;</p>
+  </div>
+  <div class="spacer"></div>
+  <span class="pill" id="count-indexed">— indexed</span>
+  <span class="pill" id="updated-pill"><span class="dot"></span>Live</span>
+  <span class="pill health-pill ok" id="health-pill" title="Feed health — click for details">✓ feeds</span>
+  <button id="btn-localise">⌖ Localise</button>
+  
+</header>
+
+<div class="filters">
+  <div class="filter-row">
+    <select id="source-select"></select>
+    <input id="search-box" type="search" placeholder="Search headlines and summaries…">
+    <span class="label">Relevance:</span>
+    <span class="chip on" data-rel="all">All</span>
+    <span class="chip" data-rel="high">High</span>
+    <span class="chip" data-rel="relevant">Relevant</span>
+    <span class="chip" data-rel="mentioned">Mentioned</span>
+    <span class="count" id="count-shown">Loading…</span>
+  </div>
+  <div class="filter-row">
+    <span class="label">Tags:</span>
+    <span id="tag-chips"></span>
+    <span class="spacer" style="flex:1"></span>
+    <span class="chip" id="chip-unread" title="Show only articles you haven't opened">Unread only</span>
+    <button id="btn-mark-read" style="font-size:11px; padding:3px 11px; border-radius:12px; font-weight:500;" title="Mark all currently visible articles as read">Mark all read</button>
+    <span class="label">Match:</span>
+    <span class="chip on" data-mode="any">Any</span>
+    <span class="chip" data-mode="all">All</span>
+    <button id="btn-clear" style="font-size:11px; padding:3px 11px; border-radius:12px; font-weight:500;">Clear filters</button>
+  </div>
+</div>
+
+<div id="health-panel">
+  <h4>Feed health</h4>
+  <div id="health-rows">Loading…</div>
+</div>
+
+<main id="feed">
+  <div class="empty"><h3>Connecting…</h3><p>Fetching articles from the server.</p></div>
+</main>
+
+<script>
+// Static stand-in for the desktop app's JSON API.
+//
+// The web UI is the same page the desktop app serves. On a static host there
+// is no server behind /api/*, so this answers those requests in the browser
+// from the JSON files the scheduled build publishes under data/.
+(function () {
+  const realFetch = window.fetch.bind(window);
+  const DATA = 'data/';
+  // How often to re-download articles.json. The build runs every 30 minutes;
+  // the page itself asks for articles every 30 seconds.
+  const RELOAD_MS = 5 * 60 * 1000;
+
+  let store = null;      // { generated_at, articles }
+  let storeLoadedAt = 0;
+  let configCache = null;
+
+  function json(payload, status) {
+    return new Response(JSON.stringify(payload), {
+      status: status || 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  async function getJSON(name, fresh) {
+    const url = DATA + name + (fresh ? '?t=' + Date.now() : '');
+    const r = await realFetch(url, { cache: fresh ? 'no-store' : 'default' });
+    if (!r.ok) throw new Error(name + ' ' + r.status);
+    return r.json();
+  }
+
+  async function loadStore() {
+    if (!store || Date.now() - storeLoadedAt > RELOAD_MS) {
+      store = await getJSON('articles.json', true);
+      storeLoadedAt = Date.now();
+      updatedPill();
+    }
+    return store;
+  }
+
+  async function loadConfig() {
+    if (!configCache) configCache = await getJSON('config.json', true);
+    return configCache;
+  }
+
+  // Same buckets as relative_time() in emunews.py, computed in the browser so
+  // they stay right between builds.
+  function relativeTime(iso) {
+    if (!iso) return '';
+    const t = Date.parse(iso);
+    if (isNaN(t)) return '';
+    const secs = Math.max(0, (Date.now() - t) / 1000);
+    if (secs < 60) return 'just now';
+    if (secs < 3600) return Math.floor(secs / 60) + 'm ago';
+    if (secs < 86400) return Math.floor(secs / 3600) + 'h ago';
+    if (secs < 86400 * 7) return Math.floor(secs / 86400) + 'd ago';
+    return new Date(t).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+  }
+
+  function updatedPill() {
+    const pill = document.getElementById('updated-pill');
+    if (!pill || !store) return;
+    pill.title = 'News data built ' + new Date(store.generated_at).toLocaleString();
+    pill.innerHTML = '<span class="dot"></span>Updated ' + relativeTime(store.generated_at);
+  }
+  setInterval(updatedPill, 60000);
+
+  // Mirrors resolve_local_feeds(): city first, then country.
+  function localSources(cfg, locale, city) {
+    if (city && cfg.city_feeds[city]) return cfg.city_feeds[city];
+    if (cfg.country_feeds[locale]) return cfg.country_feeds[locale];
+    return null;
+  }
+
+  function sortKey(a) {
+    return a.published || a.fetched_at || '';
+  }
+
+  // Mirrors get_articles() and the /api/articles handler in emunews.py.
+  async function articles(params) {
+    const [data, cfg] = await Promise.all([loadStore(), loadConfig()]);
+    const source = params.get('source');
+    const search = (params.get('search') || '').toLowerCase();
+    const relevance = params.get('relevance');
+    const tags = (params.get('tags') || '').split(',').filter(Boolean);
+    const mode = params.get('mode') || 'any';
+    const locale = (params.get('locale') || '').toUpperCase().trim();
+    const city = (params.get('city') || '').toLowerCase().trim();
+
+    let allowed = null;
+    let globalOnly = false;
+    if (locale) {
+      const feeds = localSources(cfg, locale, city);
+      if (feeds) allowed = new Set(feeds.map(f => f.name));
+    } else {
+      globalOnly = true;
+    }
+
+    const seen = new Set();
+    const out = [];
+    // Stored oldest first, so the first copy of a duplicate headline wins,
+    // as with MIN(rowid) in the desktop query.
+    for (const a of data.articles) {
+      if (source && source !== 'All sources' && a.source !== source) continue;
+      if (allowed && !allowed.has(a.source)) continue;
+      if (globalOnly && a.feed_scope && a.feed_scope !== 'global') continue;
+      if (search && !(a.title.toLowerCase().includes(search) ||
+                      (a.summary || '').toLowerCase().includes(search))) continue;
+      if (relevance === 'high' && !(a.relevance_score >= 3)) continue;
+      if (relevance === 'relevant' && a.relevance_score !== 2) continue;
+      if (relevance === 'mentioned' && !(a.relevance_score <= 1)) continue;
+      if (tags.length) {
+        const has = t => a.tags.includes(t);
+        if (mode === 'all' ? !tags.every(has) : !tags.some(has)) continue;
+      }
+      const key = a.title.trim().toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(a);
+    }
+    out.sort((x, y) => (sortKey(y) > sortKey(x) ? 1 : sortKey(y) < sortKey(x) ? -1 : 0));
+    const shown = out.slice(0, 200).map(a => ({
+      id: a.id,
+      title: a.title,
+      summary: a.summary,
+      url: a.url,
+      source: a.source,
+      source_color: a.source_color,
+      time_display: relativeTime(a.published || a.fetched_at),
+      relevance_score: a.relevance_score,
+      tags: a.tags,
+      has_body: false,
+      has_image: !!a.image,
+      image_url: a.image || '',
+    }));
+    return {
+      articles: shown,
+      shown: shown.length,
+      total: data.articles.length,
+      locale: locale || null,
+      city: city || null,
+    };
+  }
+
+  // The preview pane shows the feed's own summary. Full-text extraction
+  // needs the desktop app.
+  async function article(id) {
+    const data = await loadStore();
+    const a = data.articles.find(x => x.id === id);
+    if (!a) return { error: 'Article not found.', body: '' };
+    if (!a.summary) {
+      return { error: 'No summary in the feed for this story.', body: '' };
+    }
+    return {
+      id: a.id,
+      source: a.source,
+      body: a.summary,
+      from_summary: true,
+      has_image: !!a.image,
+      image_url: a.image || '',
+    };
+  }
+
+  async function health() {
+    const data = await getJSON('health.json', true);
+    const cutoff = Date.now() - data.stale_threshold_hours * 3600 * 1000;
+    let stale = 0;
+    for (const f of data.feeds) {
+      if (!f.last_success) { f.status = 'down'; stale++; continue; }
+      const t = Date.parse(f.last_success);
+      if (!isNaN(t) && t < cutoff) { f.status = 'stale'; stale++; }
+      else f.status = 'ok';
+    }
+    data.stale_count = stale;
+    return data;
+  }
+
+  async function config() {
+    const cfg = await loadConfig();
+    const lines = cfg.taglines || [];
+    return Object.assign({}, cfg, {
+      tagline: lines.length ? lines[Math.floor(Math.random() * lines.length)] : '',
+    });
+  }
+
+  // Browser-side IP lookup over HTTPS (the desktop app uses ip-api.com from
+  // the server, which has no HTTPS on its free tier).
+  async function locate() {
+    const r = await realFetch('https://get.geojs.io/v1/ip/geo.json');
+    if (!r.ok) return { error: 'Lookup failed' };
+    const d = await r.json();
+    if (!d.country_code) return { error: 'Lookup failed' };
+    return {
+      code: d.country_code.toUpperCase(),
+      country: d.country || d.country_code,
+      city: d.city || '',
+      region: d.region || '',
+      fetch_queued: false,
+    };
+  }
+
+  async function route(path, params) {
+    if (path === 'config') return config();
+    if (path === 'articles') return articles(params);
+    if (path === 'health') return health();
+    if (path === 'locate') return locate();
+    if (path === 'refresh') return { queued: false };
+    const m = path.match(/^article\/([^/]+)$/);
+    if (m) return article(decodeURIComponent(m[1]));
+    return null;
+  }
+
+  window.fetch = async function (input, init) {
+    const raw = typeof input === 'string' ? input : input.url;
+    const url = new URL(raw, window.location.href);
+    const i = url.pathname.indexOf('/api/');
+    if (url.origin !== window.location.origin || i < 0) {
+      return realFetch(input, init);
+    }
+    try {
+      const payload = await route(url.pathname.slice(i + 5), url.searchParams);
+      return payload === null ? json({ error: 'Not found' }, 404) : json(payload);
+    } catch (e) {
+      console.error('[EmuNews]', e);
+      return json({ error: String(e) }, 502);
+    }
+  };
+})();
+
+</script>
+<script>
+  // ── State ──
+  // All state is per-session. The server does not track which clients are
+  // localised to where; each request includes the locale+city as query
+  // params. This means two browsers can be in different locales without
+  // affecting each other or the desktop app.
+  const state = {
+    source: 'All sources',
+    search: '',
+    relevance: null,       // null | 'high' | 'relevant' | 'mentioned'
+    tags: new Set(),
+    mode: 'any',
+    locale: null,          // null | ISO-3166 alpha-2 (e.g. 'AU')
+    city:   null,          // null | lowercase city name (e.g. 'perth')
+    localeLabel: null,     // friendly display string e.g. '🇦🇺 Perth, AU'
+    supportedLocales: [],
+    countryFeeds: {},      // {AU: [{name, color}, ...]}
+    cityFeeds:    {},      // {perth: [...]}
+    countryFlags: {},      // {AU: '🇦🇺'}
+    globalSources: [],     // [{name, color}, ...]
+    tagList: [],
+    unreadOnly: false,     // filter: hide articles already opened
+    readIds: new Set(),    // populated from localStorage on load
+  };
+
+  // ── Read/unread persistence ──
+  // Stored in localStorage as a JSON array of article IDs. Capped at 5,000
+  // entries; oldest evicted when the cap is hit. Per-browser, never sent
+  // to the server.
+  const READ_STORE_KEY = 'emunews:readIds';
+  const READ_CAP = 5000;
+  function loadReadSet() {
+    try {
+      const raw = localStorage.getItem(READ_STORE_KEY);
+      if (!raw) return new Set();
+      const arr = JSON.parse(raw);
+      return new Set(Array.isArray(arr) ? arr : []);
+    } catch (e) { return new Set(); }
+  }
+  function saveReadSet() {
+    try {
+      let arr = [...state.readIds];
+      // Simple LRU: keep only the last READ_CAP entries (insertion order).
+      if (arr.length > READ_CAP) arr = arr.slice(-READ_CAP);
+      localStorage.setItem(READ_STORE_KEY, JSON.stringify(arr));
+    } catch (e) { /* quota exceeded — silently degrade */ }
+  }
+  function markRead(id) {
+    if (!id || state.readIds.has(id)) return;
+    state.readIds.add(id);
+    saveReadSet();
+  }
+  state.readIds = loadReadSet();
+
+  // ── Helpers ──
+  // API_BASE derives from the page's URL so the same app works whether
+  // mounted at / or at a subpath like /emunews/. We strip any trailing
+  // slash so apiGet('/api/foo') becomes either '/api/foo' or '/emunews/api/foo'.
+  const API_BASE = window.location.pathname.replace(/[/]+$/, '');
+  const $ = sel => document.querySelector(sel);
+  const $$ = sel => document.querySelectorAll(sel);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+
+  function apiGet(path) {
+    return fetch(API_BASE + path).then(r => r.ok ? r.json() : Promise.reject(r));
+  }
+  function apiPost(path, body) {
+    return fetch(API_BASE + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body || {})
+    }).then(r => r.ok ? r.json() : Promise.reject(r));
+  }
+
+  function buildArticlesURL() {
+    const p = new URLSearchParams();
+    if (state.source && state.source !== 'All sources') p.set('source', state.source);
+    if (state.search) p.set('search', state.search);
+    if (state.relevance) p.set('relevance', state.relevance);
+    if (state.tags.size) p.set('tags', [...state.tags].join(','));
+    if (state.mode) p.set('mode', state.mode);
+    // Per-session locale: server doesn't track this; we send it every time.
+    if (state.locale) p.set('locale', state.locale);
+    if (state.city)   p.set('city', state.city);
+    return '/api/articles?' + p.toString();
+  }
+
+  // Resolve which feed list applies to the current locale+city. Mirrors the
+  // server's resolve_local_feeds(): city wins if it has dedicated feeds,
+  // otherwise the country's set, otherwise global.
+  function activeSources() {
+    if (state.city && state.cityFeeds[state.city]) return state.cityFeeds[state.city];
+    if (state.locale && state.countryFeeds[state.locale]) return state.countryFeeds[state.locale];
+    return state.globalSources;
+  }
+
+  // ── Render ──
+  function renderCard(a) {
+    const relClass = a.relevance_score >= 3 ? 'high' : '';
+    const relText = a.relevance_score >= 3 ? 'High relevance'
+                   : a.relevance_score === 2 ? 'Relevant' : 'Mentioned';
+    const col = a.source_color;
+    const tagsHtml = (a.tags || []).map(t => {
+      const on = state.tags.has(t);
+      return `<span class="chip ${on?'on':''}" data-tag="${esc(t)}">${esc(t)}</span>`;
+    }).join('');
+    const isRead = state.readIds.has(a.id);
+    const cls = 'card' + (isRead ? ' read' : '');
+    // Preview button label hints at instant vs needs-fetch — saves the user
+    // from staring at a spinner on already-cached articles.
+    const previewLabel = a.has_body ? 'Preview ▾' : 'Preview ▾';
+    // Thumbnail — only present when we've cached an image. Kept small so
+    // the page stays scannable; the full hero shows in the expanded preview.
+    const thumbHtml = a.has_image
+      ? `<img class="card-thumb" loading="lazy" src="${esc(a.image_url)}" referrerpolicy="no-referrer" alt="" onerror="this.style.display='none'">`
+      : '';
+    // Bias label — user-defined per-source chip that displays editorial slant
+    // next to the source pill. No chip is rendered if the user hasn't set one.
+    const bias = (state.biasLabels || {})[a.source];
+    const biasHtml = bias
+      ? `<span class="bias-pill" style="background:${bias.color_bg};color:${bias.color_fg};">${bias.flag ? esc(bias.flag) + ' ' : ''}${esc(bias.text)}</span>`
+      : '';
+    return `
+      <article class="${cls}" data-id="${esc(a.id)}">
+        <div class="card-row">
+          <div class="card-text">
+            <div class="card-meta">
+              <span class="source-pill" style="color:${col};background:${col}26;border:1px solid ${col}55;">
+                ${esc(a.source)}
+              </span>
+              ${biasHtml}
+              <span class="rel ${relClass}">${relText}</span>
+              <span class="sep">·</span>
+              <span class="time">${esc(a.time_display)}</span>
+            </div>
+            <h2>${esc(a.title)}</h2>
+            ${a.summary ? `<p>${esc(a.summary.slice(0, 220))}${a.summary.length > 220 ? '…' : ''}</p>` : ''}
+            ${tagsHtml ? `<div class="card-tags">${tagsHtml}</div>` : ''}
+            <div class="card-actions">
+              <span class="action-link" data-action="preview">${previewLabel}</span>
+              <a class="action-link muted" href="${esc(a.url)}" target="_blank" rel="noopener" data-action="open">${isRead ? 'Read' : 'Open'} on ${esc(a.source)} →</a>
+            </div>
+          </div>
+          ${thumbHtml}
+        </div>
+        <div class="preview" data-preview="${esc(a.id)}" hidden></div>
+      </article>`;
+  }
+
+  function renderFeed(data) {
+    const feed = $('#feed');
+    // Apply client-side unread filter on top of server's filtering
+    let articles = data.articles;
+    if (state.unreadOnly) {
+      articles = articles.filter(a => !state.readIds.has(a.id));
+    }
+    const totalShown = articles.length;
+    $('#count-shown').textContent = state.unreadOnly
+      ? `${totalShown} unread of ${data.shown} shown · ${data.total} indexed`
+      : `Showing ${data.shown} of ${data.total}`;
+    $('#count-indexed').textContent = `${data.total} indexed`;
+    if (!articles.length) {
+      const msg = state.unreadOnly && data.shown > 0
+        ? "All caught up — you've read everything in the current view."
+        : (state.locale
+            ? `Showing only ${state.localeLabel || state.locale} sources. Articles from non-local sources are hidden while localised.`
+            : 'No articles match the current filters.');
+      feed.innerHTML = `<div class="empty"><h3>Nothing here yet</h3><p>${msg}</p></div>`;
+      return;
+    }
+    feed.innerHTML = articles.map(renderCard).join('');
+  }
+
+  function renderLocaleButton() {
+    const btn = $('#btn-localise');
+    if (state.locale) {
+      const lbl = state.localeLabel || state.locale;
+      // Compact label — no "· Global view" suffix. The active state (filled
+      // teal) plus the ↩ arrow signals "click to leave this view".
+      btn.textContent = `${lbl} ↩`;
+      btn.classList.add('active');
+      btn.title = 'Click to return to the global view';
+    } else {
+      btn.textContent = '⌖ Localise';
+      btn.classList.remove('active');
+      btn.title = 'Switch to news sources from your location';
+    }
+  }
+
+  function renderSources(sources) {
+    const sel = $('#source-select');
+    const prev = state.source;
+    sel.innerHTML = '<option>All sources</option>' +
+      sources.map(s => `<option>${esc(s.name)}</option>`).join('');
+    // Try to preserve previous selection; fall back to All
+    if ([...sel.options].some(o => o.value === prev)) {
+      sel.value = prev;
+    } else {
+      sel.value = 'All sources';
+      state.source = 'All sources';
+    }
+  }
+
+  function renderTagChips() {
+    $('#tag-chips').innerHTML = state.tagList.map(t => {
+      const on = state.tags.has(t);
+      return `<span class="chip ${on?'on':''}" data-tag="${esc(t)}">${esc(t)}</span>`;
+    }).join(' ');
+  }
+
+  // ── Data loading ──
+  async function loadConfig() {
+    const cfg = await apiGet('/api/config');
+    // Server-supplied content
+    state.tagList         = cfg.tags;
+    state.supportedLocales = cfg.supported_locales;
+    state.countryFeeds    = cfg.country_feeds || {};
+    state.cityFeeds       = cfg.city_feeds || {};
+    state.countryFlags    = cfg.country_flags || {};
+    state.globalSources   = cfg.global_sources || [];
+    state.biasLabels      = cfg.bias_labels || {};
+
+    // Logo (data URI) — replace placeholder with the actual image
+    if (cfg.logo) {
+      $('#logo-slot').innerHTML = `<img src="${cfg.logo}" alt="EmuNews">`;
+    }
+    // Random tagline picked by the server
+    if (cfg.tagline) {
+      $('#tagline-slot').textContent = cfg.tagline;
+    }
+
+    renderSources(activeSources());
+    renderTagChips();
+    renderLocaleButton();
+  }
+
+  let lastData = null;
+  async function loadArticles() {
+    try {
+      const data = await apiGet(buildArticlesURL());
+      lastData = data;
+      renderFeed(data);
+    } catch (e) {
+      $('#feed').innerHTML = `<div class="empty"><h3>Couldn't load articles</h3><p>The news data couldn't be loaded. Try again in a minute.</p></div>`;
+    }
+  }
+
+  // Re-render from cached data without re-fetching. Used when toggling
+  // "Unread only" or after marking articles read.
+  function rerender() {
+    if (lastData) renderFeed(lastData);
+  }
+
+  // ── Wiring ──
+  $('#source-select').addEventListener('change', e => {
+    state.source = e.target.value;
+    loadArticles();
+  });
+
+  let searchTimer = null;
+  $('#search-box').addEventListener('input', e => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      state.search = e.target.value.trim();
+      loadArticles();
+    }, 200);
+  });
+
+  // Delegate clicks on chips and cards
+  document.body.addEventListener('click', e => {
+    const chip = e.target.closest('.chip');
+    if (chip) {
+      if (chip.dataset.rel) {
+        state.relevance = chip.dataset.rel === 'all' ? null : chip.dataset.rel;
+        $$('[data-rel]').forEach(c => c.classList.toggle('on', c === chip));
+        loadArticles();
+        return;
+      }
+      if (chip.dataset.mode) {
+        state.mode = chip.dataset.mode;
+        $$('[data-mode]').forEach(c => c.classList.toggle('on', c === chip));
+        if (state.tags.size >= 2) loadArticles();
+        return;
+      }
+      if (chip.dataset.tag) {
+        const t = chip.dataset.tag;
+        if (state.tags.has(t)) state.tags.delete(t);
+        else state.tags.add(t);
+        renderTagChips();
+        loadArticles();
+        return;
+      }
+    }
+    // Action links inside cards. The card body itself is no longer
+    // clickable — Preview and Open are explicit actions.
+    const action = e.target.closest('[data-action]');
+    if (action) {
+      const card = action.closest('.card');
+      if (!card) return;
+      const articleId = card.dataset.id;
+      if (action.dataset.action === 'open') {
+        // Native <a target="_blank"> handles the navigation. We just want to
+        // mark the article read on click.
+        if (articleId) {
+          markRead(articleId);
+          card.classList.add('read');
+        }
+        return;
+      }
+      if (action.dataset.action === 'preview') {
+        e.preventDefault();
+        togglePreview(card, articleId);
+        return;
+      }
+    }
+  });
+
+  // ── Inline article preview ──
+  // Toggles the .preview pane open/closed. On first open, fetches the body
+  // from /api/article/<id>; subsequent opens reuse the rendered HTML.
+  // Render extracted article body to HTML. Handles markdown-flavoured input
+  // from trafilatura (paragraph breaks, headings, bullet lists) AND legacy
+  // plain-text bodies cached before we asked trafilatura for markdown — for
+  // those we fall back to splitting on sentence-ish boundaries so we never
+  // show a single wall of text.
+  function renderBody(text) {
+    if (!text) return '';
+    // Normalise line endings
+    text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+    // If the text has clear markdown structure (multiple blank-line
+    // separated blocks, OR heading markers, OR list markers), parse it
+    // as markdown-lite. Otherwise treat as legacy plain text.
+    const blankBlockCount = text.split(/\n\s*\n/).filter(b => b.trim()).length;
+    const hasMarkdownStructure = blankBlockCount > 1
+      || /^#{1,3} /m.test(text)
+      || /^[-*] /m.test(text);
+
+    if (hasMarkdownStructure) {
+      return text.split(/\n\s*\n/)
+        .map(block => block.trim())
+        .filter(block => block.length > 0)
+        .map(renderBlock)
+        .join('');
+    }
+
+    // Legacy / unstructured plain text. trafilatura's plain-text output
+    // sometimes joins paragraphs with single newlines, sometimes with no
+    // break at all. Heuristic: split into chunks of ~3 sentences each so
+    // the result is at least visually scannable.
+    return chunkPlainText(text)
+      .map(p => `<p>${esc(p)}</p>`)
+      .join('');
+  }
+
+  function renderBlock(block) {
+    // Heading
+    let m = block.match(/^(#{1,3})\s+(.+)$/m);
+    if (m) {
+      const level = m[1].length + 2;  // # -> h3, ## -> h4, ### -> h5
+      return `<h${level}>${esc(m[2].trim())}</h${level}>`;
+    }
+    // Bullet list (lines all starting with - or *)
+    const lines = block.split('\n').map(l => l.trim()).filter(l => l.length);
+    if (lines.length > 1 && lines.every(l => /^[-*]\s/.test(l))) {
+      const items = lines.map(l => `<li>${esc(l.replace(/^[-*]\s+/, ''))}</li>`).join('');
+      return `<ul>${items}</ul>`;
+    }
+    // Default: paragraph. Collapse internal newlines to single spaces.
+    const para = block.replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
+    return `<p>${esc(para)}</p>`;
+  }
+
+  // Split a wall of text into pseudo-paragraphs of ~3 sentences each.
+  // Used only as a fallback for legacy unstructured bodies; new content
+  // gets proper paragraph breaks from trafilatura's markdown output.
+  function chunkPlainText(text) {
+    // Sentence-ish splitter: ., !, or ? followed by whitespace + capital
+    const sentences = text
+      .replace(/\s+/g, ' ')
+      .trim()
+      .split(/(?<=[.!?])\s+(?=[A-Z"'])/g);
+    const out = [];
+    for (let i = 0; i < sentences.length; i += 3) {
+      out.push(sentences.slice(i, i + 3).join(' '));
+    }
+    return out;
+  }
+
+  async function togglePreview(card, articleId) {
+    const pane = card.querySelector('.preview');
+    if (!pane) return;
+    const link = card.querySelector('[data-action="preview"]');
+    const isOpen = !pane.hasAttribute('hidden');
+    if (isOpen) {
+      pane.setAttribute('hidden', '');
+      card.classList.remove('expanded');
+      if (link) link.textContent = 'Preview ▾';
+      return;
+    }
+    // Opening — mark the article as read AND tag the card as expanded so the
+    // read-dim CSS rule doesn't apply while it's open (hard to read 50%
+    // opacity body text).
+    markRead(articleId);
+    card.classList.add('read');
+    card.classList.add('expanded');
+    pane.removeAttribute('hidden');
+    if (link) link.textContent = 'Hide preview ▴';
+
+    // If we've rendered this preview already in this session, don't re-fetch
+    if (pane.dataset.loaded === '1') return;
+
+    pane.innerHTML = '<div class="loading">Fetching article…</div>';
+    try {
+      const data = await apiGet('/api/article/' + encodeURIComponent(articleId));
+      if (data.body) {
+        const bodyHtml = renderBody(data.body);
+        const metaBits = [];
+        if (data.author) metaBits.push(esc(data.author));
+        metaBits.push(esc(data.source || ''));
+        const cachedBadge = data.from_cache
+          ? '<span class="cached" title="Loaded from local cache — instant">cached</span>'
+          : '';
+        // Bias chip for the preview meta line, matching the card's chip.
+        const previewBias = (state.biasLabels || {})[data.source];
+        const previewBiasHtml = previewBias
+          ? ` <span class="bias-pill" style="background:${previewBias.color_bg};color:${previewBias.color_fg};">${previewBias.flag ? esc(previewBias.flag) + ' ' : ''}${esc(previewBias.text)}</span>`
+          : '';
+        // When the full body extraction failed, the server falls back to the
+        // RSS-provided summary. Tell the user this is a partial view, with
+        // a clear path to the full article.
+        const url = card.querySelector('[data-action="open"]').href;
+        const summaryNote = data.from_summary
+          ? `<div class="error" style="margin-bottom:10px;">Summary from the feed. <a href="${esc(url)}" target="_blank" rel="noopener">Open original →</a></div>`
+          : '';
+        // Hero image — the API tells us whether one exists; the <img> tag
+        // lazy-loads and hides itself on any fetch error (broken cache, file
+        // vanished) so a missing image never leaves a broken icon behind.
+        const heroHtml = data.has_image
+          ? `<img class="hero" loading="lazy" src="${esc(data.image_url)}" referrerpolicy="no-referrer" alt="" onerror="this.style.display='none'">`
+          : '';
+        pane.innerHTML =
+          heroHtml +
+          `<div class="meta">${metaBits.join(' · ')}${previewBiasHtml}${cachedBadge}</div>` +
+          summaryNote +
+          `<div class="body">${bodyHtml}</div>`;
+        pane.dataset.loaded = '1';
+      } else {
+        const url = card.querySelector('[data-action="open"]').href;
+        pane.innerHTML =
+          `<div class="error">${esc(data.error || "Couldn't load preview.")}` +
+          ` <a href="${esc(url)}" target="_blank" rel="noopener">Open original →</a></div>`;
+      }
+    } catch (e) {
+      const url = card.querySelector('[data-action="open"]').href;
+      pane.innerHTML =
+        `<div class="error">Could not reach the server. ` +
+        `<a href="${esc(url)}" target="_blank" rel="noopener">Open original →</a></div>`;
+    }
+  }
+
+  $('#btn-clear').addEventListener('click', () => {
+    state.source = 'All sources';
+    state.search = '';
+    state.relevance = null;
+    state.tags.clear();
+    state.mode = 'any';
+    $('#source-select').value = 'All sources';
+    $('#search-box').value = '';
+    $$('[data-rel]').forEach(c => c.classList.toggle('on', c.dataset.rel === 'all'));
+    $$('[data-mode]').forEach(c => c.classList.toggle('on', c.dataset.mode === 'any'));
+    renderTagChips();
+    loadArticles();
+  });
+
+  // ── Unread-only toggle ──
+  $('#chip-unread').addEventListener('click', () => {
+    state.unreadOnly = !state.unreadOnly;
+    $('#chip-unread').classList.toggle('on', state.unreadOnly);
+    rerender();
+  });
+
+  // ── Mark all read: every article in the currently-loaded data ──
+  $('#btn-mark-read').addEventListener('click', () => {
+    if (!lastData || !lastData.articles.length) return;
+    if (!confirm(`Mark all ${lastData.articles.length} articles as read?`)) return;
+    lastData.articles.forEach(a => state.readIds.add(a.id));
+    saveReadSet();
+    rerender();
+  });
+
+  // ── Health pill: click to toggle the per-feed status drawer ──
+  let healthOpen = false;
+  async function refreshHealth() {
+    try {
+      const data = await apiGet('/api/health');
+      const pill = $('#health-pill');
+      if (data.stale_count === 0) {
+        pill.className = 'pill health-pill ok';
+        pill.textContent = '✓ feeds';
+      } else if (data.stale_count <= 2) {
+        pill.className = 'pill health-pill warn';
+        pill.textContent = `⚠ ${data.stale_count} stale`;
+      } else {
+        pill.className = 'pill health-pill bad';
+        pill.textContent = `⚠ ${data.stale_count} stale`;
+      }
+      // If the panel is open, refresh its contents too
+      if (healthOpen) renderHealthPanel(data);
+    } catch (e) {
+      // Server down or endpoint missing — don't badge it as a problem;
+      // just hide the pill detail. The Live indicator already covers that.
+    }
+  }
+  function renderHealthPanel(data) {
+    const rows = data.feeds.map(f => {
+      let detail = '';
+      if (f.status === 'down') detail = 'never succeeded';
+      else if (f.status === 'stale') detail = `last OK ${relTime(f.last_success)}`;
+      else detail = `${f.articles_last_fetch} articles · ${relTime(f.last_success)}`;
+      return `<div class="health-row">
+        <span class="name">${esc(f.name)}</span>
+        <span class="status ${f.status}">${f.status} · ${detail}</span>
+      </div>`;
+    }).join('');
+    $('#health-rows').innerHTML = rows ||
+      '<div style="color:var(--text-muted);font-size:12px;">No fetch attempts yet. Wait a minute.</div>';
+  }
+  // Tiny ago-formatter for the panel (server already does this for cards,
+  // but here we get raw ISO strings).
+  function relTime(iso) {
+    if (!iso) return 'never';
+    const d = new Date(iso);
+    const secs = (Date.now() - d.getTime()) / 1000;
+    if (secs < 60) return 'just now';
+    if (secs < 3600) return `${Math.floor(secs/60)}m ago`;
+    if (secs < 86400) return `${Math.floor(secs/3600)}h ago`;
+    return `${Math.floor(secs/86400)}d ago`;
+  }
+  $('#health-pill').addEventListener('click', async () => {
+    healthOpen = !healthOpen;
+    $('#health-panel').classList.toggle('open', healthOpen);
+    if (healthOpen) {
+      $('#health-rows').textContent = 'Loading…';
+      try {
+        const data = await apiGet('/api/health');
+        renderHealthPanel(data);
+      } catch (e) {
+        $('#health-rows').textContent = 'Could not load feed health.';
+      }
+    }
+  });
+  // Click outside the panel to close it
+  document.addEventListener('click', e => {
+    if (!healthOpen) return;
+    if (e.target.closest('#health-panel') || e.target.closest('#health-pill')) return;
+    healthOpen = false;
+    $('#health-panel').classList.remove('open');
+  });
+
+  $('#btn-localise').addEventListener('click', async () => {
+    if (state.locale) {
+      // Revert — purely client-side, no server call needed
+      state.locale = null;
+      state.city = null;
+      state.localeLabel = null;
+      state.source = 'All sources';
+      renderSources(activeSources());
+      renderLocaleButton();
+      loadArticles();
+      return;
+    }
+    // Detect via server-side geolocation proxy
+    const btn = $('#btn-localise');
+    btn.disabled = true;
+    btn.textContent = 'Locating…';
+    try {
+      const r = await apiGet('/api/locate');
+      if (r.error) throw new Error(r.error);
+      const code = r.code;
+      const country = r.country || code;
+      const city = (r.city || '').toLowerCase().trim();
+      // Decide which feed set applies. Mirrors server's resolve_local_feeds.
+      let matchedCity = '';
+      if (city && state.cityFeeds[city]) {
+        matchedCity = city;
+      } else if (!state.countryFeeds[code]) {
+        alert(`No local sources configured for ${country} (${code}). ` +
+              `Add an entry to LOCAL_FEEDS in emunews.py.`);
+        return;
+      }
+      state.locale = code;
+      state.city = matchedCity || null;
+      const flag = state.countryFlags[code] || '';
+      state.localeLabel = matchedCity
+        ? `${flag} ${r.city}, ${code}`.trim()
+        : `${flag} ${country}`.trim();
+      state.source = 'All sources';
+      renderSources(activeSources());
+      renderLocaleButton();
+      loadArticles();
+      // The server kicks off a background scrape of the local feeds when
+      // /api/locate succeeds. Poll the article endpoint for the next ~30s
+      // to surface those articles as soon as they land.
+      if (r.fetch_queued) {
+        [3000, 8000, 15000, 25000].forEach(ms => setTimeout(loadArticles, ms));
+      }
+    } catch (e) {
+      alert('Location lookup failed. Check your connection and try again.');
+    } finally {
+      btn.disabled = false;
+      if (!state.locale) { btn.textContent = '⌖ Localise'; }
+    }
+  });
+
+  ($('#btn-refresh') || document.createElement('button')).addEventListener('click', async () => {
+    const btn = $('#btn-refresh');
+    btn.textContent = 'Fetching…';
+    btn.disabled = true;
+    try {
+      await apiPost('/api/refresh', {});
+      // Scrape happens async; reload after a short delay to pick up results
+      setTimeout(loadArticles, 2000);
+    } finally {
+      setTimeout(() => {
+        btn.textContent = '↻ Refresh';
+        btn.disabled = false;
+      }, 3000);
+    }
+  });
+
+  // Auto-reload articles + health every 30 seconds so the page stays fresh
+  setInterval(() => { loadArticles(); refreshHealth(); }, 30000);
+
+  // Boot
+  loadConfig().then(loadArticles).then(refreshHealth);
+</script>
+</body>
+</html>
